@@ -183,9 +183,8 @@ Deno.serve({port: 6969}, async (req: Request) => {
 		"Access-Control-Allow-Headers": "*",
 	});
 
-	if (req.method === "OPTIONS") new Response("ok", {status: 200, headers});
-
 	if (path === "/register") {
+		if (req.method === "OPTIONS") return new Response("ok", {status: 200, headers});
 		if (req.method !== "POST") return new Response("Method not allowed", {status: 405});
 		const data: RegisterRequest = await safeJSONParse(await req.text());
 
