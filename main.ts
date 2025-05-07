@@ -187,6 +187,13 @@ Deno.serve({port: 6969}, async (req: Request) => {
 						return socket.send(JSON.stringify(response));
 					}
 
+					// If the provided tag is the same as the user's tag, return an error
+					if (data.tag === session.user!.tag) {
+						const response: UserExistByTagResponse = {concern: "user_exist_by_tag", success: false, error: "self_not_allowed"};
+
+						return socket.send(JSON.stringify(response));
+					}
+
 					// Check if there is a user with the provided tag
 					const user = users.find((user) => user.tag === data.tag);
 

@@ -10,6 +10,7 @@ export type InvalidTagLength = "invalid_tag_length";
 
 // User database
 export type UserNotFound = "user_not_found";
+export type SelfNotAllowed = "self_not_allowed";
 
 // Miscellaneous
 export type MalformedHash = "malformed_hash";

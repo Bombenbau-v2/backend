@@ -1,4 +1,4 @@
-import type {InvalidNameLength, MalformedHash, MissingFields, NoSpecialCharacters, UserNotFound, WrongPassword, InvalidTagLength, TagUsed} from "./error.ts";
+import type {InvalidNameLength, MalformedHash, MissingFields, NoSpecialCharacters, UserNotFound, WrongPassword, InvalidTagLength, TagUsed, SelfNotAllowed} from "./error.ts";
 
 export type SocketRequest = {
 	request: "/login" | "/change_display_name" | "/change_tag" | "/user_exist_by_tag";
@@ -48,5 +48,5 @@ export type UserExistByTagResponse = {
 	concern: "user_exist_by_tag";
 	success: boolean;
 	exists?: boolean;
-	error?: MissingFields;
+	error?: MissingFields | SelfNotAllowed;
 };
