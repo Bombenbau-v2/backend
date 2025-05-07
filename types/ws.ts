@@ -1,4 +1,4 @@
-import {InvalidNameLength, MalformedHash, MissingFields, NoSpecialCharacters, UserNotFound, WrongPassword, type InvalidTagLength, type TagUsed} from "./error.ts";
+import type {InvalidNameLength, MalformedHash, MissingFields, NoSpecialCharacters, UserNotFound, WrongPassword, InvalidTagLength, TagUsed} from "./error.ts";
 
 export type SocketRequest = {
 	request: "/login" | "/change_display_name" | "/change_tag" | "/user_exist_by_tag";

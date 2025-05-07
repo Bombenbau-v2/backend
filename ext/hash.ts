@@ -7,5 +7,5 @@ export const hash = async (input: string): Promise<string> => {
 
 // Create a function that checks if the alleged hash is actually a hash
 export const checkHash = (input: string): boolean => {
-	return regex.HASH.test(input);
+	return regex.hash.test(input);
 }

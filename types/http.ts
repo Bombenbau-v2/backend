@@ -1,5 +1,5 @@
-import {MalformedHash, MissingFields, NoSpecialCharacters, TagUsed} from "./error.ts";
-import {Hash} from "./misc.ts";
+import type {MalformedHash, MissingFields, NoSpecialCharacters, TagUsed} from "./error.ts";
+import type {Hash} from "./misc.ts";
 
 export type RegisterRequest = {
 	name: string;
