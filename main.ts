@@ -163,11 +163,7 @@ Deno.serve({port: 6969}, async (req: Request) => {
 					}
 
 					// Check if there is a user with the same tag
-					if (users.some((user) => user.tag === data.tag)) {
-						const response: ChangeTagResponse = {concern: "change_tag", success: false, error: "tag_used"};
-
-						return socket.send(JSON.stringify(response));
-					}
+					
 				}
 			});
 		});
