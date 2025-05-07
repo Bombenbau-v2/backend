@@ -1,6 +1,8 @@
+import {InvalidNameLength, MalformedHash, MissingFields, NoSpecialCharacters, UserNotFound, WrongPassword, type InvalidTagLength, type TagUsed} from "./error.ts";
+
 export type SocketRequest = {
-	request: "/login" | "/change_display_name" | "/change_tag";
-	data: LoginRequest | ChangeDisplayNameRequest | ChangeTagRequest;
+	request: "/login" | "/change_display_name" | "/change_tag" | "/user_exist_by_tag";
+	data: LoginRequest | ChangeDisplayNameRequest | ChangeTagRequest | UserExistByTagRequest;
 };
 
 // Login
@@ -12,7 +14,7 @@ export type LoginRequest = {
 export type LoginResponse = {
 	concern: "login";
 	success: boolean;
-	error?: "user_not_found" | "malformed_hash" | "wrong_password" | "missing_fields";
+	error?: MissingFields | UserNotFound | MalformedHash | WrongPassword;
 };
 
 // Change display name
@@ -23,7 +25,7 @@ export type ChangeDisplayNameRequest = {
 export type ChangeDisplayNameResponse = {
 	concern: "change_display_name";
 	success: boolean;
-	error?: "missing_fields" | "invalid_name_length" | "no_special_characters";
+	error?: MissingFields | InvalidNameLength | NoSpecialCharacters;
 };
 
 // Change tag
@@ -34,5 +36,17 @@ export type ChangeTagRequest = {
 export type ChangeTagResponse = {
 	concern: "change_tag";
 	success: boolean;
-	error?: "tag_used" | "no_special_characters" | "invalid_hash" | "missing_fields" | "invalid_tag_length";
+	error?: MissingFields | TagUsed | NoSpecialCharacters | InvalidTagLength;
+};
+
+// User exist by tag
+export type UserExistByTagRequest = {
+	tag: string;
+};
+
+export type UserExistByTagResponse = {
+	concern: "user_exist_by_tag";
+	success: boolean;
+	exists: boolean;
+	error?: MissingFields;
 };

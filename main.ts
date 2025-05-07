@@ -1,7 +1,8 @@
-import {checkHash} from "./methods/hash.ts";
-import type {RegisterRequest, RegisterResponse} from "./types/http.ts";
-import type {Session, User} from "./types/misc.ts";
-import type {ChangeDisplayNameRequest, ChangeDisplayNameResponse, ChangeTagRequest, ChangeTagResponse, LoginRequest, LoginResponse, SocketRequest} from "./types/ws.ts";
+import {checkHash} from "./ext/hash.ts";
+import {RegisterRequest, RegisterResponse} from "./types/http.ts";
+import {Session, User} from "./types/misc.ts";
+import {ChangeDisplayNameRequest, ChangeDisplayNameResponse, ChangeTagRequest, ChangeTagResponse, LoginRequest, LoginResponse, SocketRequest, type UserExistByTagRequest, type UserExistByTagResponse} from "./types/ws.ts";
+import * as regex from "./ext/regex.ts";
 
 type JSONParseError = "JSON_PARSE_ERROR";
 
@@ -41,7 +42,7 @@ Deno.serve({port: 6969}, async (req: Request) => {
 			const session: Session = {};
 
 			socket.addEventListener("close", () => {
-				console.log("Client disconnected\n\n");
+				console.log("Client disconnected");
 
 				// Remove the session from the sessions array
 				const index = sessions.indexOf(session);
@@ -118,7 +119,7 @@ Deno.serve({port: 6969}, async (req: Request) => {
 					}
 
 					// Check if the name contains any special characters (just a-z0-9-_)
-					if (!/^[a-zA-Z0-9-_ ]+$/.test(data.name)) {
+					if (!regex.NAME.test(data.name)) {
 						const response: ChangeDisplayNameResponse = {concern: "change_display_name", success: false, error: "no_special_characters"};
 
 						return socket.send(JSON.stringify(response));
@@ -149,7 +150,7 @@ Deno.serve({port: 6969}, async (req: Request) => {
 					}
 
 					// Check if the tag doesn't contain any special characters (just a-z0-9-_)
-					if (!/^[a-zA-Z0-9-_]+$/.test(data.tag)) {
+					if (!regex.TAG.test(data.tag)) {
 						const response: ChangeTagResponse = {concern: "change_tag", success: false, error: "no_special_characters"};
 
 						return socket.send(JSON.stringify(response));
@@ -163,7 +164,28 @@ Deno.serve({port: 6969}, async (req: Request) => {
 					}
 
 					// Check if there is a user with the same tag
-					
+					if (users.some((user) => user.tag === data.tag)) {
+						const response: ChangeTagResponse = {concern: "change_tag", success: false, error: "tag_used"};
+
+						return socket.send(JSON.stringify(response));
+					}
+
+					// Update the user's tag in the session object
+					session.user!.tag = data.tag;
+
+					// Send response
+					const response: ChangeTagResponse = {concern: "change_tag", success: true};
+
+					socket.send(JSON.stringify(response));
+				} else if (request.request === "/user_exist_by_tag") {
+					const data = request.data as unknown as UserExistByTagRequest;
+
+					// Ensure required fields
+					if (!data.tag) {
+						const response: UserExistByTagResponse = {concern: "user_exist_by_tag", exists: false};
+
+						return socket.send(JSON.stringify(response));
+					}
 				}
 			});
 		});
@@ -200,14 +222,14 @@ Deno.serve({port: 6969}, async (req: Request) => {
 		}
 
 		// Check if the tag doesn't contain any special characters (just a-z0-9-_)
-		if (!/^[a-zA-Z0-9-_]+$/.test(data.tag)) {
+		if (!regex.TAG.test(data.tag)) {
 			const response: RegisterResponse = {success: false, error: "no_special_characters"};
 
 			return new Response(JSON.stringify(response), {status: 400, headers});
 		}
 
 		// Check if the name doesn't contain any special characters (just a-z0-9-_)
-		if (!/^[a-zA-Z0-9-_:]+$/.test(data.name)) {
+		if (!regex.NAME.test(data.name)) {
 			const response: RegisterResponse = {success: false, error: "no_special_characters"};
 
 			return new Response(JSON.stringify(response), {status: 400, headers});
@@ -215,7 +237,7 @@ Deno.serve({port: 6969}, async (req: Request) => {
 
 		// The password inside of the request is already hashed. Check if the password is actually a hash
 		if (!checkHash(data.password)) {
-			const response: RegisterResponse = {success: false, error: "invalid_hash"};
+			const response: RegisterResponse = {success: false, error: "malformed_hash"};
 
 			return new Response(JSON.stringify(response), {status: 400, headers});
 		}
