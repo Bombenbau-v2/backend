@@ -17,7 +17,7 @@ User features:
 |  +   | Password hashing                          |    1h |
 |  +   | User registration                         |    1h |
 |  +   | User login                                |    1h |
-|      | New direct message, search-like in client |    1h |
+|  +   | New direct message, search-like in client |    1h |
 |      | Messaging                                 |  1.5h |
 |      | Markdown support                          | 30min |
 |      | Profile picture + user bio                | 30min |

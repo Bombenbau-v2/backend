@@ -182,10 +182,22 @@ Deno.serve({port: 6969}, async (req: Request) => {
 
 					// Ensure required fields
 					if (!data.tag) {
-						const response: UserExistByTagResponse = {concern: "user_exist_by_tag", exists: false};
+						const response: UserExistByTagResponse = {concern: "user_exist_by_tag", success: false, error: "missing_fields"};
 
 						return socket.send(JSON.stringify(response));
 					}
+
+					// Check if there is a user with the provided tag
+					const user = users.find((user) => user.tag === data.tag);
+
+					// Send response
+					const response: UserExistByTagResponse = {
+						concern: "user_exist_by_tag",
+						success: true,
+						exists: user !== undefined,
+					};
+
+					socket.send(JSON.stringify(response));
 				}
 			});
 		});

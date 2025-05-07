@@ -47,6 +47,6 @@ export type UserExistByTagRequest = {
 export type UserExistByTagResponse = {
 	concern: "user_exist_by_tag";
 	success: boolean;
-	exists: boolean;
+	exists?: boolean;
 	error?: MissingFields;
 };
