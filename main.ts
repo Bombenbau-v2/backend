@@ -180,6 +180,7 @@ Deno.serve({port: 6969}, async (req: Request) => {
 	const headers = new Headers({
 		"Access-Control-Allow-Origin": "*",
 		"Access-Control-Allow-Methods": "*",
+		"Access-Control-Allow-Headers": "*",
 	});
 
 	if (req.method === "OPTIONS") new Response("ok", {status: 200, headers});
