@@ -1,6 +1,6 @@
 import {checkHash} from "./ext/hash.ts";
 import type {RegisterRequest, RegisterResponse} from "./types/http.ts";
-import type {Session, User} from "./types/misc.ts";
+import type {Conversation, Session, User} from "./types/misc.ts";
 import type {ChangeDisplayNameRequest, ChangeDisplayNameResponse, ChangeTagRequest, ChangeTagResponse, LoginRequest, LoginResponse, SendMessageRequest, SendMessageResponse, SocketRequest, UserExistByTagRequest, UserExistByTagResponse} from "./types/ws.ts";
 import * as regex from "./ext/regex.ts";
 import {MESSAGE_LENGTH_MAX, SERVER_PORT, USER_NAME_LENGTH_MAX, USER_NAME_LENGTH_MIN, USER_TAG_LENGTH_MAX, USER_TAG_LENGTH_MIN} from "./config.ts";
@@ -19,10 +19,11 @@ const safeJSONParse = (text: string, logError?: boolean): JSONParseError | any =
 
 const users: User[] = [];
 const sessions: Session[] = [];
+const conversations: Conversation[] = [];
 
 const loadData = () => {
 	try {
-		const data: {users: User[]; sessions: Session[]} = JSON.parse(Deno.readTextFileSync("data.json"));
+		const data: {users: User[]; sessions: Session[]; conversations: Conversation[]} = JSON.parse(Deno.readTextFileSync("data.json"));
 
 		for (const user of data.users) users.push(user);
 	} catch (error) {
@@ -38,12 +39,12 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 		const {socket, response} = Deno.upgradeWebSocket(req);
 
 		socket.addEventListener("open", () => {
-			console.log("Client connected");
+			console.log("\x1b[90mClient connected\x1b[0m");
 
 			const session: Session = {};
 
 			socket.addEventListener("close", () => {
-				console.log("Client disconnected");
+				console.log("\x1b[90mClient disconnected\x1b[0m");
 
 				// Remove the session from the sessions array
 				const index = sessions.indexOf(session);
@@ -58,8 +59,6 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 				if ((request as unknown as JSONParseError) === "JSON_PARSE_ERROR") {
 					return socket.send("invalid_json");
 				}
-
-				console.log("I ->", request);
 
 				// Ensure request structure
 				if (!request.request || !request.data) {
@@ -238,7 +237,22 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 						return socket.send(JSON.stringify(response));
 					}
 
-					// Try to find the conversation object
+					// Try to find the conversation object. If there is none, create one and add it to the conversations array
+					let conversation = conversations.find((conversation) => conversation.participants.includes(session.user!.tag) && conversation.participants.includes(recipient.tag));
+					if (!conversation) {
+						console.log(`Creating new conversation between ${session.user!.tag} and ${recipient.tag}`);
+						conversation = {
+							participants: [session.user!.tag, recipient.tag],
+							messages: [],
+						};
+						conversations.push(conversation);
+					} else console.log(`Found existing conversation between ${session.user!.tag} and ${recipient.tag}`);
+
+					// Add the message to the conversation object
+					conversation.messages.push({
+						sender: session.user!.tag,
+						text: data.text,
+					})
 				}
 			});
 		});
@@ -315,6 +329,6 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 });
 
 while (true) {
-	Deno.writeTextFileSync("data.json", JSON.stringify({users, sessions}, null, 6));
+	Deno.writeTextFileSync("data.json", JSON.stringify({users, sessions, conversations}, null, 6));
 	await new Promise((resolve) => setTimeout(resolve, 1000));
 }

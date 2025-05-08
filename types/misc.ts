@@ -11,3 +11,13 @@ export type User = {
 export type Session = {
 	user?: User;
 };
+
+export type Message = {
+	sender: UserTag;
+	text: string;
+}
+
+export type Conversation = {
+	participants: UserTag[];
+	messages: Message[];
+}
