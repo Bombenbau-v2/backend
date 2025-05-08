@@ -17,9 +17,17 @@ export type Session = {
 export type Message = {
 	sender: UserTag;
 	text: string;
-}
+};
 
 export type Conversation = {
 	participants: UUID[];
 	messages: Message[];
-}
+};
+
+export type ClientConversation = {
+	participant: {
+		name: UserName;
+		tag: UserTag;
+	};
+	lastMessage: Message;
+};

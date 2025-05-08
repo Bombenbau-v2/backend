@@ -1,7 +1,7 @@
 import {checkHash} from "./ext/hash.ts";
 import type {RegisterRequest, RegisterResponse} from "./types/http.ts";
-import type {Conversation, Session, User} from "./types/misc.ts";
-import type {ChangeDisplayNameRequest, ChangeDisplayNameResponse, ChangeTagRequest, ChangeTagResponse, LoginRequest, LoginResponse, SendMessageRequest, SendMessageResponse, SocketRequest, UserExistByTagRequest, UserExistByTagResponse} from "./types/ws.ts";
+import type {ClientConversation, Conversation, Session, User} from "./types/misc.ts";
+import type {ChangeDisplayNameRequest, ChangeDisplayNameResponse, ChangeTagRequest, ChangeTagResponse, ListConversationsRequest, LoginRequest, LoginResponse, SendMessageRequest, SendMessageResponse, SocketRequest, UserExistByTagRequest, UserExistByTagResponse} from "./types/ws.ts";
 import * as regex from "./ext/regex.ts";
 import {MESSAGE_LENGTH_MAX, SERVER_PORT, USER_NAME_LENGTH_MAX, USER_NAME_LENGTH_MIN, USER_TAG_LENGTH_MAX, USER_TAG_LENGTH_MIN} from "./config.ts";
 
@@ -26,6 +26,7 @@ const loadData = () => {
 		const data: {users: User[]; sessions: Session[]; conversations: Conversation[]} = JSON.parse(Deno.readTextFileSync("data.json"));
 
 		for (const user of data.users) users.push(user);
+		for (const conversation of data.conversations) conversations.push(conversation);
 	} catch (error) {
 		console.error("Failed to load data: " + error);
 	}
@@ -43,7 +44,7 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 
 			const session: Session = {};
 
-			socket.addEventListener("close", () => {
+			const deauthorizeUser = () => {
 				console.log("\x1b[90mClient disconnected\x1b[0m");
 
 				// Remove the session from the sessions array
@@ -51,7 +52,9 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 				if (index !== -1) {
 					sessions.splice(index, 1);
 				}
-			});
+			};
+
+			socket.addEventListener("close", deauthorizeUser);
 
 			socket.addEventListener("message", (event) => {
 				const request: SocketRequest = safeJSONParse(event.data);
@@ -70,6 +73,12 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 
 				if (request.request === "/login") {
 					const data = request.data as unknown as LoginRequest;
+
+					// If the user is already logged in, deauthorize them
+					if (session.user) {
+						console.log("deauthorizing user " + session.user.tag);
+						deauthorizeUser();
+					}
 
 					// Ensure required fields
 					if (!data.tag || !data.password) {
@@ -209,8 +218,8 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 					const data = request.data as unknown as SendMessageRequest;
 
 					// Ensure required fields
-					if (!data.messageSendId || !data.text || !data.recipient) {
-						const response: SendMessageResponse = {concern: "send_message", messageSendId: data.messageSendId, success: false, error: "missing_fields"};
+					if (!data.text || !data.recipient) {
+						const response: SendMessageResponse = {concern: "send_message", success: false, error: "missing_fields"};
 
 						return socket.send(JSON.stringify(response));
 					}
@@ -218,21 +227,21 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 					// Check if the recipient exists
 					const recipient = users.find((user) => user.tag === data.recipient);
 					if (!recipient) {
-						const response: SendMessageResponse = {concern: "send_message", messageSendId: data.messageSendId, success: false, error: "user_not_found"};
+						const response: SendMessageResponse = {concern: "send_message", success: false, error: "user_not_found"};
 
 						return socket.send(JSON.stringify(response));
 					}
 
 					// Ensure user is not trying to message themselves
 					if (session.user!.tag === recipient.tag) {
-						const response: SendMessageResponse = {concern: "send_message", messageSendId: data.messageSendId, success: false, error: "self_not_allowed"};
+						const response: SendMessageResponse = {concern: "send_message", success: false, error: "self_not_allowed"};
 
 						return socket.send(JSON.stringify(response));
 					}
 
 					// Ensure message length is in bounds
 					if (data.text.length > MESSAGE_LENGTH_MAX) {
-						const response: SendMessageResponse = {concern: "send_message", messageSendId: data.messageSendId, success: false, error: "message_length_exceeded"};
+						const response: SendMessageResponse = {concern: "send_message", success: false, error: "message_length_exceeded"};
 
 						return socket.send(JSON.stringify(response));
 					}
@@ -253,6 +262,26 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 						sender: session.user!.tag,
 						text: data.text,
 					});
+				} else if (request.request === "/list_conversations") {
+					const _data = request.data as unknown as ListConversationsRequest;
+
+					// Create an array with all conversations the user is participating in
+					const userConversation: ClientConversation[] = [];
+
+					for (const conversation of conversations.filter((conversation) => conversation.participants.includes(session.user!.uuid))) {
+						const participant = conversation.participants.find((participant) => participant !== session.user!.uuid);
+						if (participant) {
+							const user = users.find((user) => user.uuid === participant);
+							if (user) {
+								userConversation.push({
+									participant: {
+										name: user.name,
+										tag: user.tag,
+									},
+								});
+							}
+						}
+					}
 				}
 			});
 		});

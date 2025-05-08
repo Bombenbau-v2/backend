@@ -1,9 +1,9 @@
 import type {InvalidNameLength, MalformedHash, MissingFields, NoSpecialCharacters, UserNotFound, WrongPassword, InvalidTagLength, TagUsed, SelfNotAllowed, MessageLengthExceeded} from "./error.ts";
-import type {Hash, UserName, UserTag} from "./misc.ts";
+import type {ClientConversation, Conversation, Hash, UserName, UserTag, UUID} from "./misc.ts";
 
 export type SocketRequest = {
-	request: "/login" | "/change_display_name" | "/change_tag" | "/user_exist_by_tag" | "/send_message";
-	data: LoginRequest | ChangeDisplayNameRequest | ChangeTagRequest | UserExistByTagRequest | SendMessageRequest;
+	request: "/login" | "/change_display_name" | "/change_tag" | "/user_exist_by_tag" | "/send_message" | "/list_conversations";
+	data: LoginRequest | ChangeDisplayNameRequest | ChangeTagRequest | UserExistByTagRequest | SendMessageRequest | ListConversationsRequest;
 };
 
 // Login
@@ -54,14 +54,22 @@ export type UserExistByTagResponse = {
 
 // Send message
 export type SendMessageRequest = {
-	messageSendId: string;
 	text: string;
+	uuid: UUID;
 	recipient: UserTag;
 };
 
 export type SendMessageResponse = {
-	concern: "send_message";
-	messageSendId: string;
+	concern: string; // "send_message+uuid"
 	success: boolean;
 	error?: MissingFields | UserNotFound | SelfNotAllowed | MessageLengthExceeded;
+};
+
+// List conversations
+export type ListConversationsRequest = Record<never, never>;
+
+export type ListConversationsResponse = {
+	concern: "list_conversations";
+	success: boolean;
+	conversations?: ClientConversation[];
 };
