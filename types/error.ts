@@ -17,3 +17,4 @@ export type MessageLengthExceeded = "message_length_exceeded";
 
 // Miscellaneous
 export type MalformedHash = "malformed_hash";
+export type ConversationNotFound = "conversation_not_found";

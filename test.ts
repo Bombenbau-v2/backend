@@ -1,5 +1,5 @@
 import type {RegisterRequest, RegisterResponse} from "./types/http.ts";
-import type {LoginRequest, ChangeDisplayNameRequest, ChangeTagRequest, UserExistByTagRequest, SendMessageRequest, ListConversationsRequest, SocketRequest} from "./types/ws.ts";
+import type {LoginRequest, ChangeDisplayNameRequest, ChangeTagRequest, UserExistByTagRequest, SendMessageRequest, ListConversationsRequest, SocketRequest, GetConversationRequest, GetConversationResponse} from "./types/ws.ts";
 import type {UserName, UserTag} from "./types/misc.ts";
 import {hash} from "./ext/hash.ts";
 
@@ -136,3 +136,16 @@ export const listConversations = (): void => {
 		} as SocketRequest)
 	);
 };
+
+export const getConversation = (tag: UserTag): void => {
+      const request: GetConversationRequest = {
+            recipient: tag,
+      };
+
+      socket.send(
+            JSON.stringify({
+                  request: "/get_conversation",
+                  data: request,
+            } as SocketRequest)
+      );
+}

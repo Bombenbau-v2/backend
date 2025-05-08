@@ -1,7 +1,7 @@
 import {checkHash} from "./ext/hash.ts";
 import type {RegisterRequest, RegisterResponse} from "./types/http.ts";
-import type {ClientConversation, Conversation, Session, User} from "./types/misc.ts";
-import type {ChangeDisplayNameRequest, ChangeDisplayNameResponse, ChangeTagRequest, ChangeTagResponse, ListConversationsRequest, ListConversationsResponse, LoginRequest, LoginResponse, SendMessageRequest, SendMessageResponse, SocketRequest, UserExistByTagRequest, UserExistByTagResponse} from "./types/ws.ts";
+import type {ClientConversationShort, Conversation, Session, User} from "./types/misc.ts";
+import type {ChangeDisplayNameRequest, ChangeDisplayNameResponse, ChangeTagRequest, ChangeTagResponse, GetConversationRequest, GetConversationResponse, ListConversationsRequest, ListConversationsResponse, LoginRequest, LoginResponse, SendMessageRequest, SendMessageResponse, SocketRequest, UserExistByTagRequest, UserExistByTagResponse} from "./types/ws.ts";
 import * as regex from "./ext/regex.ts";
 import {ENABLE_DEV_ROUTES, MESSAGE_LENGTH_MAX, SERVER_PORT, USER_NAME_LENGTH_MAX, USER_NAME_LENGTH_MIN, USER_TAG_LENGTH_MAX, USER_TAG_LENGTH_MIN} from "./config.ts";
 import * as findUser from "./ext/find_user.ts";
@@ -220,7 +220,7 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 
 					// Ensure required fields
 					if (!data.text || !data.uuid || !data.recipient) {
-						const response: SendMessageResponse = {concern: "send_message", success: false, error: "missing_fields"};
+						const response: SendMessageResponse = {concern: `send_message+${data.uuid}`, success: false, error: "missing_fields"};
 
 						return socket.send(JSON.stringify(response));
 					}
@@ -228,21 +228,21 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 					// Check if the recipient exists
 					const recipient = findUser.byID(users, data.recipient);
 					if (!recipient) {
-						const response: SendMessageResponse = {concern: "send_message", success: false, error: "user_not_found"};
+						const response: SendMessageResponse = {concern: `send_message+${data.uuid}`, success: false, error: "user_not_found"};
 
 						return socket.send(JSON.stringify(response));
 					}
 
 					// Ensure user is not trying to message themselves
 					if (session.user!.tag === recipient.tag) {
-						const response: SendMessageResponse = {concern: "send_message", success: false, error: "self_not_allowed"};
+						const response: SendMessageResponse = {concern: `send_message+${data.uuid}`, success: false, error: "self_not_allowed"};
 
 						return socket.send(JSON.stringify(response));
 					}
 
 					// Ensure message length is in bounds
 					if (data.text.length > MESSAGE_LENGTH_MAX) {
-						const response: SendMessageResponse = {concern: "send_message", success: false, error: "message_length_exceeded"};
+						const response: SendMessageResponse = {concern: `send_message+${data.uuid}`, success: false, error: "message_length_exceeded"};
 
 						return socket.send(JSON.stringify(response));
 					}
@@ -265,11 +265,19 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 						sentAt: Date.now(),
 						id: crypto.randomUUID(),
 					});
+
+					// Send response
+					const response: SendMessageResponse = {
+						concern: "send_message+" + data.uuid,
+						success: true,
+					};
+
+					socket.send(JSON.stringify(response));
 				} else if (request.request === "/list_conversations") {
 					const _data = request.data as unknown as ListConversationsRequest;
 
 					// Create an array with all conversations the user is participating in
-					const userConversations: ClientConversation[] = [];
+					const userConversations: ClientConversationShort[] = [];
 
 					for (const conversation of conversations.filter((conversation) => conversation.participants.includes(session.user!.id))) {
 						const participant = conversation.participants.find((participant) => participant !== session.user!.id);
@@ -293,12 +301,60 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 						}
 					}
 
-
 					// Send response
 					const response: ListConversationsResponse = {
 						concern: "list_conversations",
 						success: true,
 						conversations: userConversations,
+					};
+
+					socket.send(JSON.stringify(response));
+				} else if (request.request === "/get_conversation") {
+					const data = request.data as unknown as GetConversationRequest;
+
+					// Ensure required fields
+					if (!data.recipient) {
+						const response: GetConversationResponse = {concern: "get_conversation", success: false, error: "missing_fields"};
+
+						return socket.send(JSON.stringify(response));
+					}
+
+					// Check if the recipient exists
+					const recipient = findUser.byID(users, data.recipient);
+					if (!recipient) {
+						const response: GetConversationResponse = {concern: "get_conversation", success: false, error: "user_not_found"};
+
+						return socket.send(JSON.stringify(response));
+					}
+
+					// Ensure user is not trying to get their own conversation
+					if (session.user!.tag === recipient.tag) {
+						const response: GetConversationResponse = {concern: "get_conversation", success: false, error: "self_not_allowed"};
+
+						return socket.send(JSON.stringify(response));
+					}
+
+					// Try to find the conversation object
+					const conversation = conversations.find((conversation) => conversation.participants.includes(session.user!.id) && conversation.participants.includes(recipient.id));
+					if (!conversation) {
+						const response: GetConversationResponse = {concern: "get_conversation", success: false, error: "conversation_not_found"};
+
+						return socket.send(JSON.stringify(response));
+					}
+
+					// Send response
+					const response: GetConversationResponse = {
+						concern: "get_conversation",
+						success: true,
+						conversation: {
+							participants: conversation.participants.map((participant) => findUser.byUUID(users, participant)?.tag || "unknown"),
+							messages: conversation.messages.map((message) => ({
+								sender: findUser.byUUID(users, message.sender)?.tag || "unknown",
+								text: message.text,
+								sentAt: message.sentAt,
+								id: message.id,
+							})),
+						},
 					};
 
 					socket.send(JSON.stringify(response));

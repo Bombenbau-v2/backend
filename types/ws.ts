@@ -1,9 +1,9 @@
-import type {InvalidNameLength, MalformedHash, MissingFields, NoSpecialCharacters, UserNotFound, WrongPassword, InvalidTagLength, TagUsed, SelfNotAllowed, MessageLengthExceeded} from "./error.ts";
-import type {ClientConversation, Hash, UserName, UserTag, UUID} from "./misc.ts";
+import type {InvalidNameLength, MalformedHash, MissingFields, NoSpecialCharacters, UserNotFound, WrongPassword, InvalidTagLength, TagUsed, SelfNotAllowed, MessageLengthExceeded, ConversationNotFound} from "./error.ts";
+import type {ClientConversation, ClientConversationShort, Hash, UserName, UserTag, UUID} from "./misc.ts";
 
 export type SocketRequest = {
-	request: "/login" | "/change_display_name" | "/change_tag" | "/user_exist_by_tag" | "/send_message" | "/list_conversations";
-	data: LoginRequest | ChangeDisplayNameRequest | ChangeTagRequest | UserExistByTagRequest | SendMessageRequest | ListConversationsRequest;
+	request: "/login" | "/change_display_name" | "/change_tag" | "/user_exist_by_tag" | "/send_message" | "/list_conversations" | "/get_conversation";
+	data: LoginRequest | ChangeDisplayNameRequest | ChangeTagRequest | UserExistByTagRequest | SendMessageRequest | ListConversationsRequest | GetConversationRequest;
 };
 
 // Login
@@ -71,5 +71,19 @@ export type ListConversationsRequest = Record<never, never>;
 export type ListConversationsResponse = {
 	concern: "list_conversations";
 	success: boolean;
-	conversations: ClientConversation[];
+	conversations: ClientConversationShort[];
+};
+
+// Get conversation
+export type GetConversationRequest = {
+	recipient: UserTag;
+	limit?: number;
+	before?: UUID;
+};
+
+export type GetConversationResponse = {
+	concern: "get_conversation";
+	success: boolean;
+	conversation?: ClientConversation;
+	error?: MissingFields | UserNotFound | SelfNotAllowed | ConversationNotFound;
 };
