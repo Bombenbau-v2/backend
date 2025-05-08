@@ -1,9 +1,10 @@
 import {checkHash} from "./ext/hash.ts";
 import type {RegisterRequest, RegisterResponse} from "./types/http.ts";
 import type {ClientConversation, Conversation, Session, User} from "./types/misc.ts";
-import type {ChangeDisplayNameRequest, ChangeDisplayNameResponse, ChangeTagRequest, ChangeTagResponse, ListConversationsRequest, LoginRequest, LoginResponse, SendMessageRequest, SendMessageResponse, SocketRequest, UserExistByTagRequest, UserExistByTagResponse} from "./types/ws.ts";
+import type {ChangeDisplayNameRequest, ChangeDisplayNameResponse, ChangeTagRequest, ChangeTagResponse, ListConversationsRequest, ListConversationsResponse, LoginRequest, LoginResponse, SendMessageRequest, SendMessageResponse, SocketRequest, UserExistByTagRequest, UserExistByTagResponse} from "./types/ws.ts";
 import * as regex from "./ext/regex.ts";
 import {ENABLE_DEV_ROUTES, MESSAGE_LENGTH_MAX, SERVER_PORT, USER_NAME_LENGTH_MAX, USER_NAME_LENGTH_MIN, USER_TAG_LENGTH_MAX, USER_TAG_LENGTH_MIN} from "./config.ts";
+import * as findUser from "./ext/find_user.ts";
 
 type JSONParseError = "JSON_PARSE_ERROR";
 
@@ -88,7 +89,7 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 					}
 
 					// Check if there is a user with the provided tag
-					const user = users.find((user) => user.tag === data.tag);
+					const user = findUser.byID(users, data.tag);
 					if (!user) {
 						const response: LoginResponse = {concern: "login", success: false, error: "user_not_found"};
 
@@ -159,7 +160,7 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 					}
 
 					// Check if there is a user with the same tag
-					if (users.some((user) => user.tag === data.tag)) {
+					if (findUser.byID(users, data.tag)) {
 						const response: ChangeTagResponse = {concern: "change_tag", success: false, error: "tag_used"};
 
 						return socket.send(JSON.stringify(response));
@@ -204,7 +205,7 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 					}
 
 					// Check if there is a user with the provided tag
-					const user = users.find((user) => user.tag === data.tag);
+					const user = findUser.byID(users, data.tag);
 
 					// Send response
 					const response: UserExistByTagResponse = {
@@ -225,7 +226,7 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 					}
 
 					// Check if the recipient exists
-					const recipient = users.find((user) => user.tag === data.recipient);
+					const recipient = findUser.byID(users, data.recipient);
 					if (!recipient) {
 						const response: SendMessageResponse = {concern: "send_message", success: false, error: "user_not_found"};
 
@@ -249,20 +250,19 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 					// Try to find the conversation object. If there is none, create one and add it to the conversations array
 					let conversation = conversations.find((conversation) => conversation.participants.includes(session.user!.uuid) && conversation.participants.includes(recipient.uuid));
 					if (!conversation) {
-						console.log(`Creating new conversation between ${session.user!.tag} and ${recipient.tag}`);
 						conversation = {
 							participants: [session.user?.uuid!, recipient.uuid],
 							messages: [],
 						};
 
-						console.log(conversation);
 						conversations.push(conversation);
-					} else console.log(`Found existing conversation between ${session.user!.tag} and ${recipient.tag}`);
+					}
 
 					// Add the message to the conversation object
 					conversation.messages.push({
 						sender: session.user!.uuid,
 						text: data.text,
+						sentAt: Date.now(),
 					});
 				} else if (request.request === "/list_conversations") {
 					const _data = request.data as unknown as ListConversationsRequest;
@@ -273,20 +273,33 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 					for (const conversation of conversations.filter((conversation) => conversation.participants.includes(session.user!.uuid))) {
 						const participant = conversation.participants.find((participant) => participant !== session.user!.uuid);
 						if (participant) {
-							const user = users.find((user) => user.uuid === participant);
+							const user = findUser.byUUID(users, participant);
+							const lastMessage = conversation.messages[conversation.messages.length - 1];
 							if (user) {
 								userConversations.push({
 									participant: {
 										name: user.name,
 										tag: user.tag,
 									},
-									lastMessage: conversation.messages[conversation.messages.length - 1],
+									lastMessage: {
+										sender: findUser.byUUID(users, lastMessage.sender)?.tag || "unknown",
+										text: lastMessage.text,
+										sentAt: lastMessage.sentAt,
+									},
 								});
 							}
 						}
 					}
 
-					console.log(userConversations);
+
+					// Send response
+					const response: ListConversationsResponse = {
+						concern: "list_conversations",
+						success: true,
+						conversations: userConversations,
+					};
+
+					socket.send(JSON.stringify(response));
 				}
 			});
 		});
@@ -316,7 +329,7 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 		}
 
 		// Check if there is a user with the same tag
-		if (users.some((user) => user.tag === data.tag)) {
+		if (findUser.byID(users, data.tag)) {
 			const response: RegisterResponse = {success: false, error: "tag_used"};
 
 			return new Response(JSON.stringify(response), {status: 409, headers});
