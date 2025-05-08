@@ -221,8 +221,8 @@ Deno.serve({port: 6969}, async (req: Request) => {
 	});
 
 	if (path === "/register") {
-		if (req.method === "OPTIONS") return new Response("ok", {status: 200, headers});
-		if (req.method !== "POST") return new Response("Method not allowed", {status: 405});
+		if (req.method === "OPTIONS") return new Response("", {headers});
+		if (req.method !== "POST") return new Response("Method not allowed", {status: 405, headers});
 		const data: RegisterRequest = await safeJSONParse(await req.text());
 
 		if ((data as unknown as JSONParseError) === "JSON_PARSE_ERROR") return new Response("Invalid JSON", {status: 400, headers});
@@ -267,7 +267,10 @@ Deno.serve({port: 6969}, async (req: Request) => {
 			password: data.password,
 		});
 
-		return new Response(JSON.stringify({success: true} as RegisterResponse));
+		return new Response(JSON.stringify({success: true} as RegisterResponse), {
+			status: 200,
+			headers,
+		});
 	} else
 		return new Response("404 Not Found", {
 			status: 404,
