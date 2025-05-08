@@ -19,8 +19,9 @@ User features:
 |  +   | User login                                         |    1h |
 |  +   | New direct message, search-like in client          |    1h |
 |  +   | Sending messages                                   |  1.5h |
-|      | Deleting messages                                  | 30min |
-|      | Profile picture + user bio                         | 30min |
+|  +   | Deleting messages                                  | 30min |
+|  +   | Profile picture                                    | 30min |
+|  +   | Change Profile picture                             | 30min |
 |      | Editing messages                                   |  1.5h |
 |      | Receiving/displaying messages (push notifications) |  1.5h |
 |      | Chat export                                        | 30min |

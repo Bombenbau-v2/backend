@@ -1,4 +1,4 @@
-import type {MalformedHash, MissingFields, NoSpecialCharacters, TagUsed} from "./error.ts";
+import type {InvalidNameLength, MalformedHash, MissingFields, NoSpecialCharacters, TagUsed} from "./error.ts";
 import type {Hash, UserName, UserTag} from "./misc.ts";
 
 export type RegisterRequest = {
@@ -9,5 +9,5 @@ export type RegisterRequest = {
 
 export type RegisterResponse = {
 	success: boolean;
-	error?: MissingFields | TagUsed | NoSpecialCharacters | MalformedHash;
+	error?: MissingFields | TagUsed | NoSpecialCharacters | InvalidNameLength | MalformedHash;
 };

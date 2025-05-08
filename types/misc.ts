@@ -34,15 +34,17 @@ export type ClientMessage = {
 	id: UUID;
 };
 
+export type ClientUser = {
+	name: UserName;
+	tag: UserTag;
+};
+
 export type ClientConversationShort = {
-	participant: {
-		name: UserName;
-		tag: UserTag;
-	};
+	participant: ClientUser;
 	lastMessage: ClientMessage;
 };
 
 export type ClientConversation = {
-	participants: UserTag[];
+	participants: ClientUser[];
 	messages: ClientMessage[];
 };

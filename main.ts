@@ -6,6 +6,8 @@ import * as regex from "./ext/regex.ts";
 import {ENABLE_DEV_ROUTES, MESSAGE_LENGTH_MAX, SERVER_PORT, USER_NAME_LENGTH_MAX, USER_NAME_LENGTH_MIN, USER_TAG_LENGTH_MAX, USER_TAG_LENGTH_MIN} from "./config.ts";
 import * as findUser from "./ext/find_user.ts";
 
+const defaultAvatars: string[] = Array.from(Deno.readDirSync("default_avatars").filter((file) => file.name.endsWith(".png"))).map((file) => file.name);
+
 type JSONParseError = "JSON_PARSE_ERROR";
 
 // deno-lint-ignore no-explicit-any
@@ -34,6 +36,13 @@ const loadData = () => {
 };
 
 loadData();
+
+// Ensure the avatar directory exists
+try {
+	Deno.statSync("avatar");
+} catch {
+	Deno.mkdirSync("avatar");
+}
 
 Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 	// WebSocket server
@@ -401,7 +410,10 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 						concern: "get_conversation",
 						success: true,
 						conversation: {
-							participants: conversation.participants.map((participant) => findUser.byUUID(users, participant)?.tag || "unknown"),
+							participants: conversation.participants.map((participant) => ({
+								name: findUser.byUUID(users, participant)?.name || "unknown",
+								tag: findUser.byUUID(users, participant)?.tag || "unknown",
+							})),
 							messages: conversation.messages.map((message) => ({
 								sender: findUser.byUUID(users, message.sender)?.tag || "unknown",
 								text: message.text,
@@ -437,7 +449,7 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 		// Check if the request has all the required fields
 		if (!data.name || !data.tag || !data.password) {
 			const response: RegisterResponse = {success: false, error: "missing_fields"};
-			
+
 			return new Response(JSON.stringify(response), {status: 400, headers});
 		}
 
@@ -470,22 +482,52 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 		}
 
 		// Ensure name length is in bounds
+		if (data.name.length < USER_NAME_LENGTH_MIN || data.name.length > USER_NAME_LENGTH_MAX) {
+			const response: RegisterResponse = {success: false, error: "invalid_name_length"};
+
+			return new Response(JSON.stringify(response), {status: 400, headers});
+		}
+
+		// Select a random default avatar from the default_avatars directory. Filter for .png
+		const uuid = crypto.randomUUID();
+
+		const selectedAvatar = defaultAvatars[Math.floor(Math.random() * defaultAvatars.length)];
+
+		Deno.copyFileSync(`default_avatars/${selectedAvatar}`, `avatar/${uuid}.png`);
+
+		// Send response
 		users.push({
 			name: data.name,
 			tag: data.tag,
 			password: data.password,
-			id: crypto.randomUUID(),
+			id: uuid,
 		});
 
 		return new Response(JSON.stringify({success: true} as RegisterResponse), {
 			status: 200,
 			headers,
 		});
-	} else if (path === "/avatar/blablabla") {
-		return new Response(Deno.readFileSync("square.png"), {
-			status: 200,
-			headers,
-		});
+	} else if (path.startsWith("/avatar/")) {
+		if (req.method !== "GET") return new Response("Method not allowed", {status: 405, headers});
+
+		// Try to find a user with the provided tag
+		const tag = path.split("/")[2];
+		const user = findUser.byID(users, tag);
+		if (!user) return new Response("User not found", {status: 404, headers});
+
+		const filePath = `avatar/${user.id}.png`;
+
+		try {
+			headers.append("Content-Type", "image/png");
+			headers.append("Content-Length", Deno.statSync(filePath).size.toString());
+			return new Response(Deno.readFileSync(filePath), {
+				status: 200,
+				headers,
+			});
+		} catch (error) {
+			console.error("Failed to read file:", error);
+			return new Response("File not found", {status: 404, headers});
+		}
 	} else if (ENABLE_DEV_ROUTES && path === "/clear_users") {
 		users.length = 0;
 
