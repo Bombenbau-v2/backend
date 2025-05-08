@@ -1,9 +1,9 @@
 import type {MalformedHash, MissingFields, NoSpecialCharacters, TagUsed} from "./error.ts";
-import type {Hash} from "./misc.ts";
+import type {Hash, UserName, UserTag} from "./misc.ts";
 
 export type RegisterRequest = {
-	name: string;
-	tag: string;
+	name: UserName;
+	tag: UserTag;
 	password: Hash;
 };
 

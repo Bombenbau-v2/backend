@@ -1,8 +1,9 @@
 import {checkHash} from "./ext/hash.ts";
 import type {RegisterRequest, RegisterResponse} from "./types/http.ts";
 import type {Session, User} from "./types/misc.ts";
-import type {ChangeDisplayNameRequest, ChangeDisplayNameResponse, ChangeTagRequest, ChangeTagResponse, LoginRequest, LoginResponse, SocketRequest, UserExistByTagRequest, UserExistByTagResponse} from "./types/ws.ts";
+import type {ChangeDisplayNameRequest, ChangeDisplayNameResponse, ChangeTagRequest, ChangeTagResponse, LoginRequest, LoginResponse, SendMessageRequest, SocketRequest, UserExistByTagRequest, UserExistByTagResponse} from "./types/ws.ts";
 import * as regex from "./ext/regex.ts";
+import {MESSAGE_LENGTH_MAX, SERVER_PORT, USER_NAME_LENGTH_MAX, USER_NAME_LENGTH_MIN, USER_TAG_LENGTH_MAX, USER_TAG_LENGTH_MIN} from "./config.ts";
 
 type JSONParseError = "JSON_PARSE_ERROR";
 
@@ -31,7 +32,7 @@ const loadData = () => {
 
 loadData();
 
-Deno.serve({port: 6969}, async (req: Request) => {
+Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 	// WebSocket server
 	if (req.headers.get("upgrade") === "websocket") {
 		const {socket, response} = Deno.upgradeWebSocket(req);
@@ -86,16 +87,16 @@ Deno.serve({port: 6969}, async (req: Request) => {
 						return socket.send(JSON.stringify(response));
 					}
 
-					// Check if the password is actually a hash
-					if (!checkHash(data.password)) {
-						const response: LoginResponse = {concern: "login", success: false, error: "malformed_hash"};
+					// Check if the password is correct
+					if (user.password !== data.password) {
+						const response: LoginResponse = {concern: "login", success: false, error: "wrong_password"};
 
 						return socket.send(JSON.stringify(response));
 					}
 
-					// Check if the password is correct
-					if (user.password !== data.password) {
-						const response: LoginResponse = {concern: "login", success: false, error: "wrong_password"};
+					// Check if the password is actually a hash
+					if (!checkHash(data.password)) {
+						const response: LoginResponse = {concern: "login", success: false, error: "malformed_hash"};
 
 						return socket.send(JSON.stringify(response));
 					}
@@ -125,8 +126,8 @@ Deno.serve({port: 6969}, async (req: Request) => {
 						return socket.send(JSON.stringify(response));
 					}
 
-					// Ensure name length is between 3 and 16 characters
-					if (data.name.length < 3 || data.name.length > 16) {
+					// Ensure name length is in bounds
+					if (data.name.length < USER_NAME_LENGTH_MIN || data.name.length > USER_NAME_LENGTH_MAX) {
 						const response: ChangeDisplayNameResponse = {concern: "change_display_name", success: false, error: "invalid_name_length"};
 
 						return socket.send(JSON.stringify(response));
@@ -149,6 +150,13 @@ Deno.serve({port: 6969}, async (req: Request) => {
 						return socket.send(JSON.stringify(response));
 					}
 
+					// Check if there is a user with the same tag
+					if (users.some((user) => user.tag === data.tag)) {
+						const response: ChangeTagResponse = {concern: "change_tag", success: false, error: "tag_used"};
+
+						return socket.send(JSON.stringify(response));
+					}
+
 					// Check if the tag doesn't contain any special characters (just a-z0-9-_)
 					if (!regex.TAG.test(data.tag)) {
 						const response: ChangeTagResponse = {concern: "change_tag", success: false, error: "no_special_characters"};
@@ -157,15 +165,8 @@ Deno.serve({port: 6969}, async (req: Request) => {
 					}
 
 					// Ensure tag length is between 3 and 16 characters
-					if (data.tag.length < 3 || data.tag.length > 16) {
+					if (data.tag.length < USER_TAG_LENGTH_MIN || data.tag.length > USER_TAG_LENGTH_MAX) {
 						const response: ChangeTagResponse = {concern: "change_tag", success: false, error: "invalid_tag_length"};
-
-						return socket.send(JSON.stringify(response));
-					}
-
-					// Check if there is a user with the same tag
-					if (users.some((user) => user.tag === data.tag)) {
-						const response: ChangeTagResponse = {concern: "change_tag", success: false, error: "tag_used"};
 
 						return socket.send(JSON.stringify(response));
 					}
@@ -205,6 +206,35 @@ Deno.serve({port: 6969}, async (req: Request) => {
 					};
 
 					socket.send(JSON.stringify(response));
+				} else if (request.request === "/send_message") {
+					const data = request.data as unknown as SendMessageRequest;
+
+					// Ensure required fields
+					if (!data.messageSendId || !data.text || !data.recipient) {
+						const response = {concern: "send_message", success: false, error: "missing_fields"};
+
+						return socket.send(JSON.stringify(response));
+					}
+
+					// Check if the recipient exists
+					const recipient = users.find((user) => user.tag === data.recipient);
+					if (!recipient) {
+						const response = {concern: "send_message", success: false, error: "user_not_found"};
+
+						return socket.send(JSON.stringify(response));
+					}
+
+					// Ensure user is not trying to message themselves
+					if (session.user!.tag === recipient.tag) {
+						const response = {concern: "send_message", success: false, error: "self_not_allowed"};
+
+						return socket.send(JSON.stringify(response));
+					}
+
+					// Ensure message length is in bounds
+					if (data.text.length > MESSAGE_LENGTH_MAX) {
+						null; // WIP
+					}
 				}
 			});
 		});
@@ -260,6 +290,8 @@ Deno.serve({port: 6969}, async (req: Request) => {
 
 			return new Response(JSON.stringify(response), {status: 400, headers});
 		}
+
+		// Ensure name length is in bounds
 
 		users.push({
 			name: data.name,

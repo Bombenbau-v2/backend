@@ -1,14 +1,15 @@
 import type {InvalidNameLength, MalformedHash, MissingFields, NoSpecialCharacters, UserNotFound, WrongPassword, InvalidTagLength, TagUsed, SelfNotAllowed} from "./error.ts";
+import type {Hash, UserName, UserTag} from "./misc.ts";
 
 export type SocketRequest = {
-	request: "/login" | "/change_display_name" | "/change_tag" | "/user_exist_by_tag";
-	data: LoginRequest | ChangeDisplayNameRequest | ChangeTagRequest | UserExistByTagRequest;
+	request: "/login" | "/change_display_name" | "/change_tag" | "/user_exist_by_tag" | "/send_message";
+	data: LoginRequest | ChangeDisplayNameRequest | ChangeTagRequest | UserExistByTagRequest | SendMessageRequest;
 };
 
 // Login
 export type LoginRequest = {
-	tag: string;
-	password: string;
+	tag: UserTag;
+	password: Hash;
 };
 
 export type LoginResponse = {
@@ -19,7 +20,7 @@ export type LoginResponse = {
 
 // Change display name
 export type ChangeDisplayNameRequest = {
-	name: string;
+	name: UserName;
 };
 
 export type ChangeDisplayNameResponse = {
@@ -30,7 +31,7 @@ export type ChangeDisplayNameResponse = {
 
 // Change tag
 export type ChangeTagRequest = {
-	tag: string;
+	tag: UserTag;
 };
 
 export type ChangeTagResponse = {
@@ -41,7 +42,7 @@ export type ChangeTagResponse = {
 
 // User exist by tag
 export type UserExistByTagRequest = {
-	tag: string;
+	tag: UserTag;
 };
 
 export type UserExistByTagResponse = {
@@ -49,4 +50,18 @@ export type UserExistByTagResponse = {
 	success: boolean;
 	exists?: boolean;
 	error?: MissingFields | SelfNotAllowed;
+};
+
+// Send message
+export type SendMessageRequest = {
+	messageSendId: string;
+	text: string;
+	recipient: UserTag;
+};
+
+export type SendMessageResponse = {
+	concern: "send_message";
+	messageSendId: string;
+	success: boolean;
+	error?: MissingFields | UserNotFound | NoSpecialCharacters;
 };
