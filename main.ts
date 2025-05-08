@@ -224,6 +224,7 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 						concern: "user_exist_by_tag",
 						success: true,
 						exists: user !== undefined,
+						user: user
 					};
 
 					socket.send(JSON.stringify(response));
@@ -299,7 +300,7 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 							},
 						};
 
-						participantSocket.send(JSON.stringify(notification));
+						// participantSocket.send(JSON.stringify(notification));
 					}
 
 					// Send response

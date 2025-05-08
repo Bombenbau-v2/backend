@@ -1,5 +1,5 @@
 import type {InvalidNameLength, MalformedHash, MissingFields, NoSpecialCharacters, UserNotFound, WrongPassword, InvalidTagLength, TagUsed, SelfNotAllowed, MessageLengthExceeded, ConversationNotFound, MessageNotFound} from "./error.ts";
-import type {ClientConversation, ClientConversationShort, Hash, UserName, UserTag, UUID} from "./misc.ts";
+import type {ClientConversation, ClientConversationShort, ClientUser, Hash, UserName, UserTag, UUID} from "./misc.ts";
 
 export type SocketRequest = {
 	request: "/login" | "/change_display_name" | "/change_tag" | "/user_exist_by_tag" | "/send_message" | "/list_conversations" | "/get_conversation" | "/delete_message";
@@ -49,6 +49,7 @@ export type UserExistByTagResponse = {
 	concern: "user_exist_by_tag";
 	success: boolean;
 	exists?: boolean;
+	user?: ClientUser;
 	error?: MissingFields | SelfNotAllowed;
 };
 
