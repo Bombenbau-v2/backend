@@ -1,5 +1,5 @@
 import type {InvalidNameLength, MalformedHash, MissingFields, NoSpecialCharacters, UserNotFound, WrongPassword, InvalidTagLength, TagUsed, SelfNotAllowed, MessageLengthExceeded} from "./error.ts";
-import type {ClientConversation, Conversation, Hash, UserName, UserTag, UUID} from "./misc.ts";
+import type {ClientConversation, Hash, UserName, UserTag, UUID} from "./misc.ts";
 
 export type SocketRequest = {
 	request: "/login" | "/change_display_name" | "/change_tag" | "/user_exist_by_tag" | "/send_message" | "/list_conversations";
@@ -71,5 +71,5 @@ export type ListConversationsRequest = Record<never, never>;
 export type ListConversationsResponse = {
 	concern: "list_conversations";
 	success: boolean;
-	conversations?: ClientConversation[];
+	conversations: ClientConversation[];
 };

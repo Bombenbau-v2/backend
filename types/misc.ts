@@ -15,7 +15,7 @@ export type Session = {
 };
 
 export type Message = {
-	sender: UserTag;
+	sender: UUID;
 	text: string;
 };
 
@@ -24,6 +24,7 @@ export type Conversation = {
 	messages: Message[];
 };
 
+// Modified types for client-side usage only
 export type ClientConversation = {
 	participant: {
 		name: UserName;

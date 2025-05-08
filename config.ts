@@ -1,5 +1,6 @@
 // Basic config
 export const SERVER_PORT = 6969;
+export const ENABLE_DEV_ROUTES = true;
 
 // User name
 export const USER_NAME_LENGTH_MAX = 24;

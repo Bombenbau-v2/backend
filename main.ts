@@ -3,7 +3,7 @@ import type {RegisterRequest, RegisterResponse} from "./types/http.ts";
 import type {ClientConversation, Conversation, Session, User} from "./types/misc.ts";
 import type {ChangeDisplayNameRequest, ChangeDisplayNameResponse, ChangeTagRequest, ChangeTagResponse, ListConversationsRequest, LoginRequest, LoginResponse, SendMessageRequest, SendMessageResponse, SocketRequest, UserExistByTagRequest, UserExistByTagResponse} from "./types/ws.ts";
 import * as regex from "./ext/regex.ts";
-import {MESSAGE_LENGTH_MAX, SERVER_PORT, USER_NAME_LENGTH_MAX, USER_NAME_LENGTH_MIN, USER_TAG_LENGTH_MAX, USER_TAG_LENGTH_MIN} from "./config.ts";
+import {ENABLE_DEV_ROUTES, MESSAGE_LENGTH_MAX, SERVER_PORT, USER_NAME_LENGTH_MAX, USER_NAME_LENGTH_MIN, USER_TAG_LENGTH_MAX, USER_TAG_LENGTH_MIN} from "./config.ts";
 
 type JSONParseError = "JSON_PARSE_ERROR";
 
@@ -218,7 +218,7 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 					const data = request.data as unknown as SendMessageRequest;
 
 					// Ensure required fields
-					if (!data.text || !data.recipient) {
+					if (!data.text || !data.uuid || !data.recipient) {
 						const response: SendMessageResponse = {concern: "send_message", success: false, error: "missing_fields"};
 
 						return socket.send(JSON.stringify(response));
@@ -254,34 +254,39 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 							participants: [session.user?.uuid!, recipient.uuid],
 							messages: [],
 						};
+
+						console.log(conversation);
 						conversations.push(conversation);
 					} else console.log(`Found existing conversation between ${session.user!.tag} and ${recipient.tag}`);
 
 					// Add the message to the conversation object
 					conversation.messages.push({
-						sender: session.user!.tag,
+						sender: session.user!.uuid,
 						text: data.text,
 					});
 				} else if (request.request === "/list_conversations") {
 					const _data = request.data as unknown as ListConversationsRequest;
 
 					// Create an array with all conversations the user is participating in
-					const userConversation: ClientConversation[] = [];
+					const userConversations: ClientConversation[] = [];
 
 					for (const conversation of conversations.filter((conversation) => conversation.participants.includes(session.user!.uuid))) {
 						const participant = conversation.participants.find((participant) => participant !== session.user!.uuid);
 						if (participant) {
 							const user = users.find((user) => user.uuid === participant);
 							if (user) {
-								userConversation.push({
+								userConversations.push({
 									participant: {
 										name: user.name,
 										tag: user.tag,
 									},
+									lastMessage: conversation.messages[conversation.messages.length - 1],
 								});
 							}
 						}
 					}
+
+					console.log(userConversations);
 				}
 			});
 		});
@@ -352,6 +357,20 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 		});
 	} else if (path === "/avatar/blablabla") {
 		return new Response(Deno.readFileSync("square.png"), {
+			status: 200,
+			headers,
+		});
+	} else if (ENABLE_DEV_ROUTES && path === "/clear_users") {
+		users.length = 0;
+
+		return new Response("Cleared users", {
+			status: 200,
+			headers,
+		});
+	} else if (ENABLE_DEV_ROUTES && path === "/clear_conversations") {
+		conversations.length = 0;
+
+		return new Response("Cleared conversations", {
 			status: 200,
 			headers,
 		});
