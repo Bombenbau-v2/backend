@@ -248,10 +248,10 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 					}
 
 					// Try to find the conversation object. If there is none, create one and add it to the conversations array
-					let conversation = conversations.find((conversation) => conversation.participants.includes(session.user!.uuid) && conversation.participants.includes(recipient.uuid));
+					let conversation = conversations.find((conversation) => conversation.participants.includes(session.user!.id) && conversation.participants.includes(recipient.id));
 					if (!conversation) {
 						conversation = {
-							participants: [session.user?.uuid!, recipient.uuid],
+							participants: [session.user?.id!, recipient.id],
 							messages: [],
 						};
 
@@ -260,9 +260,10 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 
 					// Add the message to the conversation object
 					conversation.messages.push({
-						sender: session.user!.uuid,
+						sender: session.user!.id,
 						text: data.text,
 						sentAt: Date.now(),
+						id: crypto.randomUUID(),
 					});
 				} else if (request.request === "/list_conversations") {
 					const _data = request.data as unknown as ListConversationsRequest;
@@ -270,8 +271,8 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 					// Create an array with all conversations the user is participating in
 					const userConversations: ClientConversation[] = [];
 
-					for (const conversation of conversations.filter((conversation) => conversation.participants.includes(session.user!.uuid))) {
-						const participant = conversation.participants.find((participant) => participant !== session.user!.uuid);
+					for (const conversation of conversations.filter((conversation) => conversation.participants.includes(session.user!.id))) {
+						const participant = conversation.participants.find((participant) => participant !== session.user!.id);
 						if (participant) {
 							const user = findUser.byUUID(users, participant);
 							const lastMessage = conversation.messages[conversation.messages.length - 1];
@@ -285,6 +286,7 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 										sender: findUser.byUUID(users, lastMessage.sender)?.tag || "unknown",
 										text: lastMessage.text,
 										sentAt: lastMessage.sentAt,
+										id: lastMessage.id,
 									},
 								});
 							}
@@ -360,8 +362,8 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 		users.push({
 			name: data.name,
 			tag: data.tag,
-			uuid: crypto.randomUUID(),
 			password: data.password,
+			id: crypto.randomUUID(),
 		});
 
 		return new Response(JSON.stringify({success: true} as RegisterResponse), {

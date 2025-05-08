@@ -5,5 +5,5 @@ export const byID = (users: User[], tag: UserTag): User | undefined => {
 };
 
 export const byUUID = (users: User[], uuid: UUID): User | undefined => {
-	return users.find((user) => user.uuid === uuid);
+	return users.find((user) => user.id === uuid);
 };
