@@ -27,16 +27,16 @@ export type Conversation = {
 };
 
 // Modified types for client-side usage only
-export type ClientMessage = {
-	sender: UserTag;
-	text: string;
-	sentAt: number;
-	id: UUID;
-};
-
 export type ClientUser = {
 	name: UserName;
 	tag: UserTag;
+};
+
+export type ClientMessage = {
+	sender: ClientUser;
+	text: string;
+	sentAt: number;
+	id: UUID;
 };
 
 export type ClientConversationShort = {

@@ -354,7 +354,10 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 										tag: user.tag,
 									},
 									lastMessage: {
-										sender: findUser.byUUID(users, lastMessage.sender)?.tag || "unknown",
+										sender: {
+											name: findUser.byUUID(users, lastMessage.sender)?.name || "unknown",
+											tag: findUser.byUUID(users, lastMessage.sender)?.tag || "unknown",
+										},
 										text: lastMessage.text,
 										sentAt: lastMessage.sentAt,
 										id: lastMessage.id,
@@ -415,7 +418,10 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 								tag: findUser.byUUID(users, participant)?.tag || "unknown",
 							})),
 							messages: conversation.messages.map((message) => ({
-								sender: findUser.byUUID(users, message.sender)?.tag || "unknown",
+								sender: {
+									name: findUser.byUUID(users, message.sender)?.name || "unknown",
+									tag: findUser.byUUID(users, message.sender)?.tag || "unknown",
+								},
 								text: message.text,
 								sentAt: message.sentAt,
 								id: message.id,
