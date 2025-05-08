@@ -1,7 +1,7 @@
 import {checkHash} from "./ext/hash.ts";
 import type {RegisterRequest, RegisterResponse} from "./types/http.ts";
 import type {Session, User} from "./types/misc.ts";
-import type {ChangeDisplayNameRequest, ChangeDisplayNameResponse, ChangeTagRequest, ChangeTagResponse, LoginRequest, LoginResponse, SendMessageRequest, SocketRequest, UserExistByTagRequest, UserExistByTagResponse} from "./types/ws.ts";
+import type {ChangeDisplayNameRequest, ChangeDisplayNameResponse, ChangeTagRequest, ChangeTagResponse, LoginRequest, LoginResponse, SendMessageRequest, SendMessageResponse, SocketRequest, UserExistByTagRequest, UserExistByTagResponse} from "./types/ws.ts";
 import * as regex from "./ext/regex.ts";
 import {MESSAGE_LENGTH_MAX, SERVER_PORT, USER_NAME_LENGTH_MAX, USER_NAME_LENGTH_MIN, USER_TAG_LENGTH_MAX, USER_TAG_LENGTH_MIN} from "./config.ts";
 
@@ -211,7 +211,7 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 
 					// Ensure required fields
 					if (!data.messageSendId || !data.text || !data.recipient) {
-						const response = {concern: "send_message", success: false, error: "missing_fields"};
+						const response: SendMessageResponse = {concern: "send_message", messageSendId: data.messageSendId, success: false, error: "missing_fields"};
 
 						return socket.send(JSON.stringify(response));
 					}
@@ -219,22 +219,26 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 					// Check if the recipient exists
 					const recipient = users.find((user) => user.tag === data.recipient);
 					if (!recipient) {
-						const response = {concern: "send_message", success: false, error: "user_not_found"};
+						const response: SendMessageResponse = {concern: "send_message", messageSendId: data.messageSendId, success: false, error: "user_not_found"};
 
 						return socket.send(JSON.stringify(response));
 					}
 
 					// Ensure user is not trying to message themselves
 					if (session.user!.tag === recipient.tag) {
-						const response = {concern: "send_message", success: false, error: "self_not_allowed"};
+						const response: SendMessageResponse = {concern: "send_message", messageSendId: data.messageSendId, success: false, error: "self_not_allowed"};
 
 						return socket.send(JSON.stringify(response));
 					}
 
 					// Ensure message length is in bounds
 					if (data.text.length > MESSAGE_LENGTH_MAX) {
-						null; // WIP
+						const response: SendMessageResponse = {concern: "send_message", messageSendId: data.messageSendId, success: false, error: "message_length_exceeded"};
+
+						return socket.send(JSON.stringify(response));
 					}
+
+					// Try to find the conversation object
 				}
 			});
 		});

@@ -1,4 +1,4 @@
-import type {InvalidNameLength, MalformedHash, MissingFields, NoSpecialCharacters, UserNotFound, WrongPassword, InvalidTagLength, TagUsed, SelfNotAllowed} from "./error.ts";
+import type {InvalidNameLength, MalformedHash, MissingFields, NoSpecialCharacters, UserNotFound, WrongPassword, InvalidTagLength, TagUsed, SelfNotAllowed, MessageLengthExceeded} from "./error.ts";
 import type {Hash, UserName, UserTag} from "./misc.ts";
 
 export type SocketRequest = {
@@ -63,5 +63,5 @@ export type SendMessageResponse = {
 	concern: "send_message";
 	messageSendId: string;
 	success: boolean;
-	error?: MissingFields | UserNotFound | NoSpecialCharacters;
+	error?: MissingFields | UserNotFound | SelfNotAllowed | MessageLengthExceeded;
 };
