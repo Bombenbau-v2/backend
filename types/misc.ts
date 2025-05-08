@@ -1,10 +1,12 @@
 export type Hash = string;
+export type UUID = string;
 export type UserName = string;
 export type UserTag = string;
 
 export type User = {
 	name: UserName;
 	tag: UserTag;
+	uuid: UUID;
 	password: Hash;
 };
 
@@ -18,6 +20,6 @@ export type Message = {
 }
 
 export type Conversation = {
-	participants: UserTag[];
+	participants: UUID[];
 	messages: Message[];
 }

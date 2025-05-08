@@ -238,11 +238,11 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 					}
 
 					// Try to find the conversation object. If there is none, create one and add it to the conversations array
-					let conversation = conversations.find((conversation) => conversation.participants.includes(session.user!.tag) && conversation.participants.includes(recipient.tag));
+					let conversation = conversations.find((conversation) => conversation.participants.includes(session.user!.uuid) && conversation.participants.includes(recipient.uuid));
 					if (!conversation) {
 						console.log(`Creating new conversation between ${session.user!.tag} and ${recipient.tag}`);
 						conversation = {
-							participants: [session.user!.tag, recipient.tag],
+							participants: [session.user?.uuid!, recipient.uuid],
 							messages: [],
 						};
 						conversations.push(conversation);
@@ -252,7 +252,7 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 					conversation.messages.push({
 						sender: session.user!.tag,
 						text: data.text,
-					})
+					});
 				}
 			});
 		});
@@ -310,14 +310,19 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 		}
 
 		// Ensure name length is in bounds
-
 		users.push({
 			name: data.name,
 			tag: data.tag,
+			uuid: crypto.randomUUID(),
 			password: data.password,
 		});
 
 		return new Response(JSON.stringify({success: true} as RegisterResponse), {
+			status: 200,
+			headers,
+		});
+	} else if (path === "/avatar/blablabla") {
+		return new Response(Deno.readFileSync("square.png"), {
 			status: 200,
 			headers,
 		});
