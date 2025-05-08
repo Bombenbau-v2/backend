@@ -1,7 +1,7 @@
 import {checkHash} from "./ext/hash.ts";
 import type {RegisterRequest, RegisterResponse} from "./types/http.ts";
 import type {ClientConversationShort, Conversation, Session, User} from "./types/misc.ts";
-import type {ChangeDisplayNameRequest, ChangeDisplayNameResponse, ChangeTagRequest, ChangeTagResponse, GetConversationRequest, GetConversationResponse, ListConversationsRequest, ListConversationsResponse, LoginRequest, LoginResponse, SendMessageRequest, SendMessageResponse, SocketRequest, UserExistByTagRequest, UserExistByTagResponse} from "./types/ws.ts";
+import type {ChangeDisplayNameRequest, ChangeDisplayNameResponse, ChangeTagRequest, ChangeTagResponse, DeleteMessageRequest, DeleteMessageResponse, GetConversationRequest, GetConversationResponse, ListConversationsRequest, ListConversationsResponse, LoginRequest, LoginResponse, SendMessageRequest, SendMessageResponse, SocketRequest, UserExistByTagRequest, UserExistByTagResponse} from "./types/ws.ts";
 import * as regex from "./ext/regex.ts";
 import {ENABLE_DEV_ROUTES, MESSAGE_LENGTH_MAX, SERVER_PORT, USER_NAME_LENGTH_MAX, USER_NAME_LENGTH_MIN, USER_TAG_LENGTH_MAX, USER_TAG_LENGTH_MIN} from "./config.ts";
 import * as findUser from "./ext/find_user.ts";
@@ -273,6 +273,60 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 					};
 
 					socket.send(JSON.stringify(response));
+				} else if (request.request === "/delete_message") {
+					const data = request.data as unknown as DeleteMessageRequest;
+
+					// Ensure required fields
+					if (!data.recipient || !data.messageId) {
+						const response: DeleteMessageResponse = {concern: `delete_message+${data.messageId}`, success: false, error: "missing_fields"};
+
+						return socket.send(JSON.stringify(response));
+					}
+
+					// Check if the recipient exists
+					const recipient = findUser.byID(users, data.recipient);
+					if (!recipient) {
+						const response: DeleteMessageResponse = {concern: `delete_message+${data.messageId}`, success: false, error: "user_not_found"};
+
+						return socket.send(JSON.stringify(response));
+					}
+
+					// Ensure user is not trying to delete a message from themselves
+					if (session.user!.tag === recipient.tag) {
+						const response: DeleteMessageResponse = {concern: `delete_message+${data.messageId}`, success: false, error: "self_not_allowed"};
+
+						return socket.send(JSON.stringify(response));
+					}
+
+					// Try to find the conversation object
+					const conversation = conversations.find((conversation) => conversation.participants.includes(session.user!.id) && conversation.participants.includes(recipient.id));
+					if (!conversation) {
+						const response: DeleteMessageResponse = {concern: `delete_message+${data.messageId}`, success: false, error: "conversation_not_found"};
+
+						return socket.send(JSON.stringify(response));
+					}
+
+					// Try to find the message object
+					const message = conversation.messages.find((message) => message.id === data.messageId);
+					if (!message) {
+						const response: DeleteMessageResponse = {concern: `delete_message+${data.messageId}`, success: false, error: "message_not_found"};
+
+						return socket.send(JSON.stringify(response));
+					}
+
+					// Remove the message from the conversation object
+					const messageIndex = conversation.messages.indexOf(message);
+					if (messageIndex !== -1) {
+						conversation.messages.splice(messageIndex, 1);
+					}
+
+					// Send response
+					const response: DeleteMessageResponse = {
+						concern: "delete_message+" + data.messageId,
+						success: true,
+					};
+
+					socket.send(JSON.stringify(response));
 				} else if (request.request === "/list_conversations") {
 					const _data = request.data as unknown as ListConversationsRequest;
 
@@ -383,6 +437,7 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 		// Check if the request has all the required fields
 		if (!data.name || !data.tag || !data.password) {
 			const response: RegisterResponse = {success: false, error: "missing_fields"};
+			
 			return new Response(JSON.stringify(response), {status: 400, headers});
 		}
 

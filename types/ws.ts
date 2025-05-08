@@ -1,9 +1,9 @@
-import type {InvalidNameLength, MalformedHash, MissingFields, NoSpecialCharacters, UserNotFound, WrongPassword, InvalidTagLength, TagUsed, SelfNotAllowed, MessageLengthExceeded, ConversationNotFound} from "./error.ts";
+import type {InvalidNameLength, MalformedHash, MissingFields, NoSpecialCharacters, UserNotFound, WrongPassword, InvalidTagLength, TagUsed, SelfNotAllowed, MessageLengthExceeded, ConversationNotFound, MessageNotFound} from "./error.ts";
 import type {ClientConversation, ClientConversationShort, Hash, UserName, UserTag, UUID} from "./misc.ts";
 
 export type SocketRequest = {
-	request: "/login" | "/change_display_name" | "/change_tag" | "/user_exist_by_tag" | "/send_message" | "/list_conversations" | "/get_conversation";
-	data: LoginRequest | ChangeDisplayNameRequest | ChangeTagRequest | UserExistByTagRequest | SendMessageRequest | ListConversationsRequest | GetConversationRequest;
+	request: "/login" | "/change_display_name" | "/change_tag" | "/user_exist_by_tag" | "/send_message" | "/list_conversations" | "/get_conversation" | "/delete_message";
+	data: LoginRequest | ChangeDisplayNameRequest | ChangeTagRequest | UserExistByTagRequest | SendMessageRequest | ListConversationsRequest | GetConversationRequest | DeleteMessageRequest;
 };
 
 // Login
@@ -63,6 +63,18 @@ export type SendMessageResponse = {
 	concern: string; // "send_message+uuid"
 	success: boolean;
 	error?: MissingFields | UserNotFound | SelfNotAllowed | MessageLengthExceeded;
+};
+
+// Delete message
+export type DeleteMessageRequest = {
+	recipient: UserTag;
+	messageId: UUID;
+};
+
+export type DeleteMessageResponse = {
+	concern: string; // "delete_message+uuid"
+	success: boolean;
+	error?: MissingFields | UserNotFound | SelfNotAllowed | ConversationNotFound | MessageNotFound;
 };
 
 // List conversations

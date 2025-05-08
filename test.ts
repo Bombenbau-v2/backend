@@ -1,6 +1,6 @@
 import type {RegisterRequest, RegisterResponse} from "./types/http.ts";
-import type {LoginRequest, ChangeDisplayNameRequest, ChangeTagRequest, UserExistByTagRequest, SendMessageRequest, ListConversationsRequest, SocketRequest, GetConversationRequest, GetConversationResponse} from "./types/ws.ts";
-import type {UserName, UserTag} from "./types/misc.ts";
+import type {LoginRequest, ChangeDisplayNameRequest, ChangeTagRequest, UserExistByTagRequest, SendMessageRequest, ListConversationsRequest, SocketRequest, GetConversationRequest, DeleteMessageRequest} from "./types/ws.ts";
+import type {UserName, UserTag, UUID} from "./types/misc.ts";
 import {hash} from "./ext/hash.ts";
 
 // Initialize socket
@@ -111,7 +111,7 @@ export const userExistByTag = (tag: UserTag): void => {
 	);
 };
 
-export const sendMessage = (text: string, uuid: string, recipient: UserTag): void => {
+export const sendMessage = (text: string, uuid: UUID, recipient: UserTag): void => {
 	const request: SendMessageRequest = {
 		text,
 		uuid,
@@ -126,6 +126,20 @@ export const sendMessage = (text: string, uuid: string, recipient: UserTag): voi
 	);
 };
 
+export const deleteMessage = (tag: UserTag, message: UUID): void => {
+	const request: DeleteMessageRequest = {
+		recipient: tag,
+		messageId: message,
+	};
+
+      socket.send(
+            JSON.stringify({
+                  request: "/delete_message",
+                  data: request,
+            } as SocketRequest)
+      );
+};
+
 export const listConversations = (): void => {
 	const request: ListConversationsRequest = {};
 
@@ -138,14 +152,14 @@ export const listConversations = (): void => {
 };
 
 export const getConversation = (tag: UserTag): void => {
-      const request: GetConversationRequest = {
-            recipient: tag,
-      };
+	const request: GetConversationRequest = {
+		recipient: tag,
+	};
 
-      socket.send(
-            JSON.stringify({
-                  request: "/get_conversation",
-                  data: request,
-            } as SocketRequest)
-      );
-}
+	socket.send(
+		JSON.stringify({
+			request: "/get_conversation",
+			data: request,
+		} as SocketRequest)
+	);
+};

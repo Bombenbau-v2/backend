@@ -10,11 +10,14 @@ export type TagUsed = "tag_used";
 // Special characters
 export type NoSpecialCharacters = "no_special_characters";
 
-// Invalid length
+// Length boundaries
 export type InvalidNameLength = "invalid_name_length";
 export type InvalidTagLength = "invalid_tag_length";
 export type MessageLengthExceeded = "message_length_exceeded";
 
 // Miscellaneous
 export type MalformedHash = "malformed_hash";
+
+// Message dedicated
 export type ConversationNotFound = "conversation_not_found";
+export type MessageNotFound = "message_not_found";
