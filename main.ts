@@ -5,6 +5,7 @@ import type {ChangeDisplayNameRequest, ChangeDisplayNameResponse, ChangeTagReque
 import * as regex from "./ext/regex.ts";
 import {ENABLE_DEV_ROUTES, MESSAGE_LENGTH_MAX, SERVER_PORT, USER_NAME_LENGTH_MAX, USER_NAME_LENGTH_MIN, USER_TAG_LENGTH_MAX, USER_TAG_LENGTH_MIN} from "./config.ts";
 import * as findUser from "./ext/find_user.ts";
+import type {NewMessageNotification} from "./types/notify.ts";
 
 const defaultAvatars: string[] = Array.from(Deno.readDirSync("default_avatars").filter((file) => file.name.endsWith(".png"))).map((file) => file.name);
 
@@ -52,7 +53,9 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 		socket.addEventListener("open", () => {
 			console.log("\x1b[90mClient connected\x1b[0m");
 
-			const session: Session = {};
+			const session: Session = {
+				send: socket.send,
+			};
 
 			const deauthorizeUser = () => {
 				console.log("\x1b[90mClient disconnected\x1b[0m");
@@ -274,6 +277,30 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 						sentAt: Date.now(),
 						id: crypto.randomUUID(),
 					});
+
+					// Notify participants of the new message
+					for (const participant of conversation.participants) {
+						const participantSocket = sessions.find((session) => session.user?.id === participant);
+						if (!participantSocket) continue;
+
+						const isSelf = participant === session.user?.id;
+
+						const notification: NewMessageNotification = {
+							notify: "new_message",
+							conversation: isSelf ? recipient.tag : session.user!.tag,
+							message: {
+								sender: {
+									name: session.user!.name,
+									tag: session.user!.tag,
+								},
+								text: data.text,
+								sentAt: Date.now(),
+								id: crypto.randomUUID(),
+							},
+						};
+
+						participantSocket.send(JSON.stringify(notification));
+					}
 
 					// Send response
 					const response: SendMessageResponse = {

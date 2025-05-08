@@ -12,6 +12,7 @@ export type User = {
 
 export type Session = {
 	user?: User;
+	send: (data: string) => void;
 };
 
 export type Message = {
