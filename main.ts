@@ -5,8 +5,8 @@ import type {ChangeDisplayNameRequest, ChangeDisplayNameResponse, ChangeTagReque
 import * as regex from "./ext/regex.ts";
 import {ENABLE_DEV_ROUTES, MESSAGE_LENGTH_MAX, SERVER_PORT, USER_NAME_LENGTH_MAX, USER_NAME_LENGTH_MIN, USER_TAG_LENGTH_MAX, USER_TAG_LENGTH_MIN} from "./config.ts";
 import * as findUser from "./ext/find_user.ts";
-import type {NewMessageNotification} from "./types/notify.ts";
-import type {Message, ClientMessage} from "./types/misc.ts";
+import type {DeleteMessageNotification, NewMessageNotification} from "./types/notify.ts";
+import type {Message} from "./types/misc.ts";
 
 const defaultAvatars: string[] = Array.from(Deno.readDirSync("default_avatars").filter((file) => file.name.endsWith(".png"))).map((file) => file.name);
 
@@ -68,14 +68,23 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 				}
 			};
 
-			const sendQueue = () => {
-				if (session.sendQueue.length > 0) {
-					for (const message of session.sendQueue) {
-						socket.send(message);
-						session.sendQueue.splice(session.sendQueue.indexOf(message), 1);
+			const sendQueue = async () => {
+				await new Promise((resolve) => {
+					if (session.sendQueue.length > 0) {
+						for (const message of session.sendQueue) {
+							socket.send(message);
+						}
+						session.sendQueue = [];
 					}
-				}
+					resolve(true);
+				});
+
+				setTimeout(() => {
+					sendQueue();
+				}, 100);
 			};
+
+			sendQueue();
 
 			socket.addEventListener("close", deauthorizeUser);
 
@@ -369,6 +378,22 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 						conversation.messages.splice(messageIndex, 1);
 					}
 
+					// Notify participants of the deleted message
+					for (const participant of conversation.participants) {
+						const participantSocket = sessions.find((session) => session.user?.id === participant);
+						if (!participantSocket) continue;
+
+						const isSelf = participant === session.user?.id;
+
+						const notify: DeleteMessageNotification = {
+							notify: "delete_message",
+							conversation: isSelf ? recipient.tag : session.user!.tag,
+							message: data.messageId,
+						};
+
+						participantSocket.sendQueue.push(JSON.stringify(notify));
+					}
+
 					// Send response
 					const response: DeleteMessageResponse = {
 						concern: "delete_message+" + data.messageId,
@@ -393,15 +418,17 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 										name: user.name,
 										tag: user.tag,
 									},
-									lastMessage: lastMessage ? {
-										sender: {
-											name: findUser.byUUID(users, lastMessage.sender)?.name || "unknown",
-											tag: findUser.byUUID(users, lastMessage.sender)?.tag || "unknown",
-										},
-										text: lastMessage.text,
-										sentAt: lastMessage.sentAt,
-										id: lastMessage.id,
-									} : undefined,
+									lastMessage: lastMessage
+										? {
+												sender: {
+													name: findUser.byUUID(users, lastMessage.sender)?.name || "unknown",
+													tag: findUser.byUUID(users, lastMessage.sender)?.tag || "unknown",
+												},
+												text: lastMessage.text,
+												sentAt: lastMessage.sentAt,
+												id: lastMessage.id,
+										  }
+										: undefined,
 								});
 							}
 						}
