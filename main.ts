@@ -108,7 +108,7 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 
 					// If the user is already logged in, deauthorize them
 					if (session.user) {
-						console.log("deauthorizing user " + session.user.tag);
+						console.log("\x1b[90mdeauthorizing user", session.user.tag, "\x1b[0m");
 						deauthorizeUser();
 					}
 
@@ -409,7 +409,6 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 
 					for (const conversation of conversations.filter((conversation) => conversation.participants.includes(session.user!.id))) {
 						const participant = conversation.participants.find((participant) => participant !== session.user!.id);
-						console.log(participant);
 						if (participant) {
 							const user = findUser.byUUID(users, participant);
 							const lastMessage: Message | undefined = conversation.messages[conversation.messages.length - 1];

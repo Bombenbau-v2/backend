@@ -18,10 +18,15 @@ User features:
 |  +   | User registration                                  |    1h |
 |  +   | User login                                         |    1h |
 |  +   | New direct message, search-like in client          |    1h |
+|  +   | Conversation overview                              |  1.5h |
+|  +   | Display past messages                              |    2h |
 |  +   | Sending messages                                   |  1.5h |
+|  +   | Handle new message (socket push-notification)      |  1.5h |
 |  +   | Deleting messages                                  | 30min |
+|  +   | Handle delete message (socket push-notification)   |  1.5h |
 |  +   | Profile picture                                    | 30min |
-|  +   | Change Profile picture                             | 30min |
+|  +   | Random default profile picture                     | 30min |
+|      | Change Profile picture                             | 30min |
 |      | Editing messages                                   |  1.5h |
 |      | Receiving/displaying messages (push notifications) |  1.5h |
 |      | Chat export                                        | 30min |
