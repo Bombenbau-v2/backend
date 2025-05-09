@@ -1,6 +1,6 @@
 import {checkHash} from "./ext/hash.ts";
 import type {RegisterRequest, RegisterResponse} from "./types/http.ts";
-import type {ClientConversationShort, Conversation, Session, User} from "./types/misc.ts";
+import type {ClientConversationShort, ClientMessage, Conversation, Session, User} from "./types/misc.ts";
 import type {ChangeDisplayNameRequest, ChangeDisplayNameResponse, ChangeTagRequest, ChangeTagResponse, DeleteMessageRequest, DeleteMessageResponse, GetConversationRequest, GetConversationResponse, ListConversationsRequest, ListConversationsResponse, LoginRequest, LoginResponse, SendMessageRequest, SendMessageResponse, SocketRequest, UserExistByTagRequest, UserExistByTagResponse} from "./types/ws.ts";
 import * as regex from "./ext/regex.ts";
 import {ENABLE_DEV_ROUTES, MESSAGE_LENGTH_MAX, SERVER_PORT, USER_NAME_LENGTH_MAX, USER_NAME_LENGTH_MIN, USER_TAG_LENGTH_MAX, USER_TAG_LENGTH_MIN} from "./config.ts";
@@ -409,27 +409,33 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 
 					for (const conversation of conversations.filter((conversation) => conversation.participants.includes(session.user!.id))) {
 						const participant = conversation.participants.find((participant) => participant !== session.user!.id);
+						console.log(participant);
 						if (participant) {
 							const user = findUser.byUUID(users, participant);
 							const lastMessage: Message | undefined = conversation.messages[conversation.messages.length - 1];
+
+							const lastClientMessage: ClientMessage | undefined = lastMessage
+								? {
+										sender: {
+											name: findUser.byUUID(users, lastMessage?.sender)?.name || "unknown",
+											tag: findUser.byUUID(users, lastMessage?.sender)?.tag || "unknown",
+										},
+										text: lastMessage.text || "",
+										sentAt: lastMessage.sentAt || 0,
+										id: lastMessage.id || crypto.randomUUID(),
+								  }
+								: undefined;
+
 							if (user) {
-								userConversations.push({
+								const clientConversation: ClientConversationShort = {
 									participant: {
-										name: user.name,
-										tag: user.tag,
+										name: findUser.byUUID(users, participant)?.name || "unknown",
+										tag: findUser.byUUID(users, participant)?.tag || "unknown",
 									},
-									lastMessage: lastMessage
-										? {
-												sender: {
-													name: findUser.byUUID(users, lastMessage.sender)?.name || "unknown",
-													tag: findUser.byUUID(users, lastMessage.sender)?.tag || "unknown",
-												},
-												text: lastMessage.text,
-												sentAt: lastMessage.sentAt,
-												id: lastMessage.id,
-										  }
-										: undefined,
-								});
+									lastMessage: lastClientMessage,
+								};
+
+								userConversations.push(clientConversation);
 							}
 						}
 					}
