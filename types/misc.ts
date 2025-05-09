@@ -12,7 +12,7 @@ export type User = {
 
 export type Session = {
 	user?: User;
-	send: (data: string) => void;
+	sendQueue: string[];
 };
 
 export type Message = {
@@ -42,7 +42,7 @@ export type ClientMessage = {
 
 export type ClientConversationShort = {
 	participant: ClientUser;
-	lastMessage: ClientMessage;
+	lastMessage?: ClientMessage;
 };
 
 export type ClientConversation = {

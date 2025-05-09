@@ -6,6 +6,7 @@ import * as regex from "./ext/regex.ts";
 import {ENABLE_DEV_ROUTES, MESSAGE_LENGTH_MAX, SERVER_PORT, USER_NAME_LENGTH_MAX, USER_NAME_LENGTH_MIN, USER_TAG_LENGTH_MAX, USER_TAG_LENGTH_MIN} from "./config.ts";
 import * as findUser from "./ext/find_user.ts";
 import type {NewMessageNotification} from "./types/notify.ts";
+import type {Message, ClientMessage} from "./types/misc.ts";
 
 const defaultAvatars: string[] = Array.from(Deno.readDirSync("default_avatars").filter((file) => file.name.endsWith(".png"))).map((file) => file.name);
 
@@ -54,7 +55,7 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 			console.log("\x1b[90mClient connected\x1b[0m");
 
 			const session: Session = {
-				send: socket.send,
+				sendQueue: [],
 			};
 
 			const deauthorizeUser = () => {
@@ -64,6 +65,15 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 				const index = sessions.indexOf(session);
 				if (index !== -1) {
 					sessions.splice(index, 1);
+				}
+			};
+
+			const sendQueue = () => {
+				if (session.sendQueue.length > 0) {
+					for (const message of session.sendQueue) {
+						socket.send(message);
+						session.sendQueue.splice(session.sendQueue.indexOf(message), 1);
+					}
 				}
 			};
 
@@ -224,7 +234,7 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 						concern: "user_exist_by_tag",
 						success: true,
 						exists: user !== undefined,
-						user: user
+						user: user,
 					};
 
 					socket.send(JSON.stringify(response));
@@ -272,12 +282,14 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 					}
 
 					// Add the message to the conversation object
-					conversation.messages.push({
-						sender: session.user!.id,
-						text: data.text,
-						sentAt: Date.now(),
-						id: crypto.randomUUID(),
-					});
+					if (data.text !== "OPEN_CONVERSATION") {
+						conversation.messages.push({
+							sender: session.user!.id,
+							text: data.text,
+							sentAt: Date.now(),
+							id: crypto.randomUUID(),
+						});
+					}
 
 					// Notify participants of the new message
 					for (const participant of conversation.participants) {
@@ -286,7 +298,7 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 
 						const isSelf = participant === session.user?.id;
 
-						const notification: NewMessageNotification = {
+						const notify: NewMessageNotification = {
 							notify: "new_message",
 							conversation: isSelf ? recipient.tag : session.user!.tag,
 							message: {
@@ -300,7 +312,7 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 							},
 						};
 
-						// participantSocket.send(JSON.stringify(notification));
+						participantSocket.sendQueue.push(JSON.stringify(notify));
 					}
 
 					// Send response
@@ -374,14 +386,14 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 						const participant = conversation.participants.find((participant) => participant !== session.user!.id);
 						if (participant) {
 							const user = findUser.byUUID(users, participant);
-							const lastMessage = conversation.messages[conversation.messages.length - 1];
+							const lastMessage: Message | undefined = conversation.messages[conversation.messages.length - 1];
 							if (user) {
 								userConversations.push({
 									participant: {
 										name: user.name,
 										tag: user.tag,
 									},
-									lastMessage: {
+									lastMessage: lastMessage ? {
 										sender: {
 											name: findUser.byUUID(users, lastMessage.sender)?.name || "unknown",
 											tag: findUser.byUUID(users, lastMessage.sender)?.tag || "unknown",
@@ -389,7 +401,7 @@ Deno.serve({port: SERVER_PORT}, async (req: Request) => {
 										text: lastMessage.text,
 										sentAt: lastMessage.sentAt,
 										id: lastMessage.id,
-									},
+									} : undefined,
 								});
 							}
 						}
